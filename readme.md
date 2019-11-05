@@ -10,22 +10,22 @@ config_dict = {
         'key2': 'value2'
     }
 }
-ssm_key_alias = 'kms_key_alias'
+kms_key_alias = 'kms_key_alias'
 kms_client = boto3.client('kms')
-awsparameter.encrypt(config_dict, ssm_key_alias, kms_client)
+awsparameter.encrypt_text_with_kms(config_dict, kms_key_alias, kms_client)
 
 # upload
 key_bucket = 'bucket_name'
-ssm_key_alias = 'kms_key_alias'
+kms_key_alias = 'kms_key_alias'
 key_name = 'key_name'
-encoded_ciphertext = awsparameter.encrypt(config_dict, ssm_key_alias, kms_client) 
-s3_client = boto3.client('boto3')
-awsparameter.upload(key_bucket, ssm_key_alias, key_name, encoded_ciphertext, s3_client)
+encoded_ciphertext = awsparameter.encrypt_text_with_kms(config_dict, kms_key_alias, kms_client) 
+s3_client = boto3.client('s3')
+awsparameter.upload_s3(key_bucket, kms_key_alias, key_name, encoded_ciphertext, s3_client)
 
 # download and decrypt
 key_bucket = 'bucket_name'
 saved_bucket_key = 'key_name'
 kms_client = boto3.client('kms')
-k3_client = boto3.client('s3_client')
-awsparameter.decrypt(key_bucket, saved_bucket_key, kms_client, s3_client)
+s3_client = boto3.client('s3')
+awsparameter.decrypt_text_with_kms(key_bucket, saved_bucket_key, kms_client, s3_client)
 ~~~

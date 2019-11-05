@@ -11,4 +11,5 @@ config = {
         'sdfsdf':'sdfsdfdsfsf'
     }
 }
-awsparameter.encrypt_text_with_kms(config, key)
+encrypted_config = awsparameter.encrypt_text_with_kms(config, 'mycelebs-config')
+awsparameter.upload_s3('mycelebs-config', 'mycelebs-config', 'sosos_ss', encrypted_config)

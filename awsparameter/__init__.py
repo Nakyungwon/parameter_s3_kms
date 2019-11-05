@@ -6,14 +6,21 @@ import logging
 logger = logging.getLogger()
 
 
-def encrypt_text_with_kms(config_dict, ssm_key_alias, kms_client=None):
+def encrypt_text_with_kms(config_dict, kms_key_alias, kms_client=None):
+    '''
+    :param config_dict: dict of config
+                        ex) { key : { key: value} }
+    :param kms_key_alias: name of kms
+    :param kms_client: boto kms object ex) boto3.clent('kms')
+    :return: encrypted ciphertext
+    '''
     if kms_client is None:
         kms_client = boto3.client('kms',
                                   aws_access_key_id=None,
                                   aws_secret_access_key=None
                                   )
     config_text = json.dumps(config_dict)
-    key = 'alias/%s' % ssm_key_alias
+    key = 'alias/%s' % kms_key_alias
     try:
         response = kms_client.encrypt(
             KeyId=key,
@@ -27,15 +34,52 @@ def encrypt_text_with_kms(config_dict, ssm_key_alias, kms_client=None):
     return encrypted_ciphertext
 
 
-def upload_s3(key_bucket, ssm_key_alias, key_name, encoded_ciphertext, s3_client=None):
+def is_s3_key_list(key_name, key_bucket, s3_client):
+    '''
+    check same key in s3 bucket
+    :param key_name: name of kms key
+    :param key_bucket: name fo s3 bucket
+    :param s3_client: object of s3 with s3
+    :return: boolean
+    '''
+    try:
+        response = s3_client.list_objects(
+            Bucket=key_bucket
+        )
+        res_contents = response.get('Contents', None)
+        key_lists = [obj['Key'] for obj in res_contents]
+        if key_name in key_lists:
+            return False
+        else:
+            return True
+    except Exception as err:
+        logger.error(err)
+        raise
+
+
+def upload_s3(key_bucket, kms_key_alias, key_name, encoded_ciphertext, s3_client=None, is_force=False):
+    '''
+    upload content to s3 bucket
+    :param key_bucket: name fo s3 bucket
+    :param kms_key_alias: name of kms key
+    :param key_name: name of key in s3
+    :param encoded_ciphertext: encoded text
+    :param s3_client: object of s3 with s3
+    :return:
+    '''
     if s3_client is None:
         s3_client = boto3.client('s3',
                                  aws_access_key_id=None,
                                  aws_secret_access_key=None
                                  )
-    key = 'alias/%s' % ssm_key_alias
+    key = 'alias/%s' % kms_key_alias
     if '.json' not in key_name:
         key_name = key_name + '.json'
+
+    if not is_force:
+        if not is_s3_key_list(key_name, key_bucket, s3_client):
+            raise Exception(key_name+' is already used in '+key_bucket)
+
     try:
         response = s3_client.put_object(
             ACL='private',
@@ -53,6 +97,13 @@ def upload_s3(key_bucket, ssm_key_alias, key_name, encoded_ciphertext, s3_client
 
 
 def get_aws_config_from_bucket(s3_client, ssm_key, key_bucket):
+    '''
+    get content from bucket
+    :param s3_client: object of boto3 with s3
+    :param ssm_key: name of key in bucket
+    :param key_bucket: name of bucket
+    :return:
+    '''
     if '.json' not in ssm_key:
         s3_key = ssm_key + '.json'
     else:
@@ -67,6 +118,14 @@ def get_aws_config_from_bucket(s3_client, ssm_key, key_bucket):
 
 
 def decrypt_text_with_kms(key_bucket, saved_bucket_key, kms_client=None, s3_client=None):
+    '''
+    decrypt content from s3
+    :param key_bucket: name of bucket
+    :param saved_bucket_key: name of key in bucket
+    :param kms_client: object of boto3 with kms
+    :param s3_client: object of boto3 with s3
+    :return: encoded text
+    '''
     if kms_client is None:
         kms_client = boto3.client('kms',
                                   aws_access_key_id=None,

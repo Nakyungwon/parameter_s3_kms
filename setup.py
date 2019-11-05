@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name             = 'awsparameter',
-    version          = '1.07',
+    version          = '1.08',
     description      = 'use parameter in S3 with kms',
     author           = 'Nakyungwon',
     author_email     = 'saecomaster@gmail.com',
