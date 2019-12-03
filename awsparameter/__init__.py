@@ -47,7 +47,9 @@ def is_s3_key_list(key_name, key_bucket, s3_client):
             Bucket=key_bucket
         )
         res_contents = response.get('Contents', None)
-        key_lists = [obj['Key'] for obj in res_contents]
+        key_lists = []
+        if res_contents:
+            key_lists = [obj['Key'] for obj in res_contents]
         if key_name in key_lists:
             return False
         else:
